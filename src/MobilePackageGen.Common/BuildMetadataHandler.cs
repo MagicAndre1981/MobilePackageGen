@@ -223,6 +223,11 @@ namespace MobilePackageGen
                             continue;
                         }
 
+                        if (Package.PackageIdentity == null)
+                        {
+                            continue;
+                        }
+
                         bool matches = Package.PackageIdentity.Equals(cbsPackageIdentity, StringComparison.InvariantCultureIgnoreCase);
 
                         if (matches)
@@ -249,6 +254,76 @@ namespace MobilePackageGen
                             }
 
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
+                            if (!string.IsNullOrEmpty(DestinationPathExtension))
+                            {
+                                cabFileName = DestinationPath[..^DestinationPathExtension.Length];
+                                cabFile = DestinationPath;
+                            }
+                            else
+                            {
+                                cabFileName = DestinationPath;
+                                cabFile = cabFileName;
+                            }
+
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return (cabFileName, cabFile);
+        }
+
+        public static (string cabFileName, string cabFile) GetPackageNamingForINF(string inf, UpdateHistory.UpdateHistory? updateHistory)
+        {
+            string cabFileName = "";
+            string cabFile = "";
+
+            bool found = false;
+            
+            string infFileName = Path.GetFileNameWithoutExtension(inf);
+
+            if (updateHistory != null)
+            {
+                // Go through every update in reverse chronological order
+                foreach (UpdateHistory.UpdateEvent UpdateEvent in updateHistory.UpdateEvents.UpdateEvent.Reverse())
+                {
+                    foreach (UpdateHistory.Package Package in UpdateEvent.UpdateOSOutput.Packages.Package)
+                    {
+                        if (Package.PackageFile.EndsWith(".mum", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        bool matches = Path.GetFileNameWithoutExtension(Package.PackageFile) == infFileName;
+
+                        if (matches)
+                        {
+                            string DestinationPath = Package.PackageFile;
+
+                            if (DestinationPath.StartsWith(@"\\?\"))
+                            {
+                                DestinationPath = DestinationPath[4..];
+                            }
+
+                            if (DestinationPath[1] == ':')
+                            {
+                                DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                            }
+
+                            string DestinationPathExtension = Path.GetExtension(DestinationPath);
+                            if (DestinationPathExtension == ".inf")
+                            {
+                                DestinationPathExtension = ".cab";
+                                DestinationPath = DestinationPath[..^DestinationPathExtension.Length] + ".cab";
+                            }
+
                             if (!string.IsNullOrEmpty(DestinationPathExtension))
                             {
                                 cabFileName = DestinationPath[..^DestinationPathExtension.Length];

@@ -34,6 +34,8 @@ Version: 1.0.6.0
 
             SPKGBuilder.BuildSPKG(disks, outputFolder, updateHistory);
 
+            DriverBuilder.BuildDrivers(disks, outputFolder, updateHistory);
+
             Console.WriteLine("The operation completed successfully.");
         }
 
