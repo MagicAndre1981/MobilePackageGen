@@ -27,8 +27,9 @@ Version: 1.0.6.0
             }
 
             BuildMetadataHandler.GetOEMInput(disks, outputFolder);
+            BuildMetadataHandler.GetFeatureManifests(disks, outputFolder);
             UpdateHistory.UpdateHistory? updateHistory = BuildMetadataHandler.GetUpdateHistory(disks);
-            BuildMetadataHandler.GetAdditionalContent(disks);
+            BuildMetadataHandler.GetAdditionalContent(disks, outputFolder);
 
             CBSBuilder.BuildCBS(disks, outputFolder, updateHistory);
 
