@@ -72,7 +72,7 @@ namespace MobilePackageGen
 
                 if (DestinationPath[1] == ':')
                 {
-                    DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                    DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
                 }
 
                 if (DestinationPath.StartsWith(@"\\?\"))
@@ -311,23 +311,38 @@ namespace MobilePackageGen
                         {
                             string DestinationPath = Package.PackageFile;
 
-                            /*if (DestinationPath.StartsWith(@"\\?\"))
+                            /*if (DestinationPath.StartsWith(@"\\"))
                             {
                                 int indexOfPackages = DestinationPath.IndexOf("MSPackages");
                                 if (indexOfPackages > -1)
                                 {
                                     DestinationPath = DestinationPath[indexOfPackages..];
                                 }
-                            }*/
+                            }
 
                             if (DestinationPath.StartsWith(@"\\?\"))
                             {
                                 DestinationPath = DestinationPath[4..];
                             }
 
+                            if (DestinationPath.StartsWith('\\'))
+                            {
+                                DestinationPath = DestinationPath[2..];
+                            }*/
+
                             if (DestinationPath[1] == ':')
                             {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
+                            }
+
+                            if (DestinationPath.StartsWith(@"\\?\"))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
+                            }
+
+                            if (DestinationPath.StartsWith('\\'))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
                             }
 
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
@@ -396,16 +411,26 @@ namespace MobilePackageGen
                                 {
                                     DestinationPath = DestinationPath[indexOfPackages..];
                                 }
-                            }*/
+                            }
 
                             if (DestinationPath.StartsWith(@"\\?\"))
                             {
                                 DestinationPath = DestinationPath[4..];
-                            }
+                            }*/
 
                             if (DestinationPath[1] == ':')
                             {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
+                            }
+
+                            if (DestinationPath.StartsWith(@"\\?\"))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
+                            }
+
+                            if (DestinationPath.StartsWith('\\'))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
                             }
 
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
@@ -462,14 +487,19 @@ namespace MobilePackageGen
                         {
                             string DestinationPath = Package.PackageFile;
 
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = DestinationPath[4..];
-                            }
-
                             if (DestinationPath[1] == ':')
                             {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
+                            }
+
+                            if (DestinationPath.StartsWith(@"\\?\"))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
+                            }
+
+                            if (DestinationPath.StartsWith('\\'))
+                            {
+                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
                             }
 
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);

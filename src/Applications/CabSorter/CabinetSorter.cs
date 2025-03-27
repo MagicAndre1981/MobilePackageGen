@@ -36,7 +36,7 @@ namespace CabSorter
 
                         if (DestinationPath[1] == ':')
                         {
-                            DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                            DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
                         }
 
                         bool found = false;
@@ -135,7 +135,7 @@ namespace CabSorter
 
                         if (DestinationPath[1] == ':')
                         {
-                            DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                            DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
                         }
 
                         bool found = false;
