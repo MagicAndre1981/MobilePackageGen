@@ -15,7 +15,7 @@ namespace CabSorter
                     {
                         string DestinationPath = Package.PackageFile;
 
-                        if (DestinationPath.StartsWith(@"\\?\"))
+                        if (DestinationPath.StartsWith(@"\\"))
                         {
                             int indexOfPackages = DestinationPath.IndexOf("MSPackages");
                             if (indexOfPackages > -1)
@@ -27,6 +27,11 @@ namespace CabSorter
                         if (DestinationPath.StartsWith(@"\\?\"))
                         {
                             DestinationPath = DestinationPath[4..];
+                        }
+
+                        if (DestinationPath.StartsWith(@"\\"))
+                        {
+                            DestinationPath = DestinationPath[2..];
                         }
 
                         if (DestinationPath[1] == ':')
@@ -109,7 +114,7 @@ namespace CabSorter
                     {
                         string DestinationPath = Package.PackageFile;
 
-                        if (DestinationPath.StartsWith(@"\\?\"))
+                        if (DestinationPath.StartsWith(@"\\"))
                         {
                             int indexOfPackages = DestinationPath.IndexOf("MSPackages");
                             if (indexOfPackages > -1)
@@ -121,6 +126,11 @@ namespace CabSorter
                         if (DestinationPath.StartsWith(@"\\?\"))
                         {
                             DestinationPath = DestinationPath[4..];
+                        }
+
+                        if (DestinationPath.StartsWith(@"\\"))
+                        {
+                            DestinationPath = DestinationPath[2..];
                         }
 
                         if (DestinationPath[1] == ':')

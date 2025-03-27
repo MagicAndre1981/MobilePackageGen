@@ -56,7 +56,14 @@ namespace MobilePackageGen
 
         public static void GetFeatureManifests(IEnumerable<IDisk> disks, string destination_path)
         {
-            string[] FMs = File.ReadAllLines(Path.Combine(destination_path, "OEMInput.xml"));
+            string OEMInputPath = Path.Combine(destination_path, "OEMInput.xml");
+
+            if (!File.Exists(OEMInputPath))
+            {
+                return;
+            }
+
+            string[] FMs = File.ReadAllLines(OEMInputPath);
             FMs = [.. FMs.Where(x => x.Contains("<AdditionalFM>")).Select(x => x.Split(">")[1].Split("<")[0])];
 
             foreach (string FM in FMs)
@@ -66,6 +73,16 @@ namespace MobilePackageGen
                 if (DestinationPath[1] == ':')
                 {
                     DestinationPath = Path.Combine($"Drive{DestinationPath[0]}", DestinationPath[3..]);
+                }
+
+                if (DestinationPath.StartsWith(@"\\?\"))
+                {
+                    DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
+                }
+
+                if (DestinationPath.StartsWith('\\'))
+                {
+                    DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
                 }
 
                 foreach (IDisk disk in disks)
