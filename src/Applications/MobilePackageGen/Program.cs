@@ -6,7 +6,7 @@
         {
             Console.WriteLine(@"
 Mobile Package Generator Tool
-Version: 1.0.6.0
+Version: 1.0.7.0
 ");
 
             if (args.Length < 2)
