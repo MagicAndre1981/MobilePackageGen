@@ -69,21 +69,7 @@ namespace MobilePackageGen
             foreach (string FM in FMs)
             {
                 string DestinationPath = FM;
-
-                if (DestinationPath[1] == ':')
-                {
-                    DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
-                }
-
-                if (DestinationPath.StartsWith(@"\\?\"))
-                {
-                    DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
-                }
-
-                if (DestinationPath.StartsWith('\\'))
-                {
-                    DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
-                }
+                DestinationPath = ReformatDestinationPath(DestinationPath);
 
                 foreach (IDisk disk in disks)
                 {
@@ -310,42 +296,9 @@ namespace MobilePackageGen
                         if (matches)
                         {
                             string DestinationPath = Package.PackageFile;
-
-                            /*if (DestinationPath.StartsWith(@"\\"))
-                            {
-                                int indexOfPackages = DestinationPath.IndexOf("MSPackages");
-                                if (indexOfPackages > -1)
-                                {
-                                    DestinationPath = DestinationPath[indexOfPackages..];
-                                }
-                            }
-
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = DestinationPath[4..];
-                            }
-
-                            if (DestinationPath.StartsWith('\\'))
-                            {
-                                DestinationPath = DestinationPath[2..];
-                            }*/
-
-                            if (DestinationPath[1] == ':')
-                            {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
-                            }
-
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
-                            }
-
-                            if (DestinationPath.StartsWith('\\'))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
-                            }
-
+                            DestinationPath = ReformatDestinationPath(DestinationPath);
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
+
                             if (!string.IsNullOrEmpty(DestinationPathExtension))
                             {
                                 cabFileName = DestinationPath[..^DestinationPathExtension.Length];
@@ -370,6 +323,42 @@ namespace MobilePackageGen
             }
 
             return (cabFileName, cabFile);
+        }
+
+        private static string ReformatDestinationPath(string DestinationPath)
+        {
+            if (DestinationPath[1] == ':')
+            {
+                string DriveLetter = DestinationPath[0].ToString().ToUpper();
+                string DriveLetterLessPath = DestinationPath[3..];
+
+                DestinationPath = Path.Combine($"Drive{DriveLetter}", DriveLetterLessPath);
+            }
+
+            if (DestinationPath.StartsWith(@"\\?\") && DestinationPath[5] == ':')
+            {
+                string UNCLessPath = DestinationPath[4..];
+                string DriveLetter = UNCLessPath[0].ToString().ToUpper();
+                string DriveLetterLessPath = UNCLessPath[3..];
+
+                DestinationPath = Path.Combine($"Drive{DriveLetter}", DriveLetterLessPath);
+            }
+
+            if (DestinationPath.StartsWith(@"\\?\"))
+            {
+                string UNCLessPath = DestinationPath[4..];
+
+                DestinationPath = Path.Combine("UNC", UNCLessPath);
+            }
+
+            if (DestinationPath.StartsWith('\\'))
+            {
+                string UNCLessPath = DestinationPath[2..];
+
+                DestinationPath = Path.Combine($"UNC", UNCLessPath);
+            }
+
+            return DestinationPath;
         }
 
         public static (string cabFileName, string cabFile) GetPackageNamingForCBS(XmlMum.Assembly cbs, UpdateHistory.UpdateHistory? updateHistory)
@@ -403,37 +392,9 @@ namespace MobilePackageGen
                         if (matches)
                         {
                             string DestinationPath = Package.PackageFile;
-
-                            /*if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                int indexOfPackages = DestinationPath.IndexOf("MSPackages");
-                                if (indexOfPackages > -1)
-                                {
-                                    DestinationPath = DestinationPath[indexOfPackages..];
-                                }
-                            }
-
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = DestinationPath[4..];
-                            }*/
-
-                            if (DestinationPath[1] == ':')
-                            {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
-                            }
-
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
-                            }
-
-                            if (DestinationPath.StartsWith('\\'))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
-                            }
-
+                            DestinationPath = ReformatDestinationPath(DestinationPath);
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
+
                             if (!string.IsNullOrEmpty(DestinationPathExtension))
                             {
                                 cabFileName = DestinationPath[..^DestinationPathExtension.Length];
@@ -486,23 +447,9 @@ namespace MobilePackageGen
                         if (matches)
                         {
                             string DestinationPath = Package.PackageFile;
-
-                            if (DestinationPath[1] == ':')
-                            {
-                                DestinationPath = Path.Combine($"Drive{DestinationPath[0].ToString().ToUpper()}", DestinationPath[3..]);
-                            }
-
-                            if (DestinationPath.StartsWith(@"\\?\"))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[4..]);
-                            }
-
-                            if (DestinationPath.StartsWith('\\'))
-                            {
-                                DestinationPath = Path.Combine($"UNC", DestinationPath[2..]);
-                            }
-
+                            DestinationPath = ReformatDestinationPath(DestinationPath);
                             string DestinationPathExtension = Path.GetExtension(DestinationPath);
+
                             if (DestinationPathExtension == ".inf")
                             {
                                 DestinationPathExtension = ".cab";
