@@ -417,10 +417,6 @@ namespace MobilePackageGen
                         {
                             IEnumerable<CabinetFileInfo> fileMappings = GetCabinetFileInfoForCbsPackage(cbs, partition, disks);
 
-                            uint oldPercentage = uint.MaxValue;
-                            uint oldFilePercentage = uint.MaxValue;
-                            string oldFileName = "";
-
                             // Cab Creation is only supported on Windows
                             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             {
@@ -431,68 +427,25 @@ namespace MobilePackageGen
                                         Directory.CreateDirectory(directory);
                                     }
 
-                                    CabInfo cab = new(cabFile);
-                                    cab.PackFiles(null, fileMappings.Select(x => x.GetFileTuple()).ToArray(), fileMappings.Select(x => x.FileName).ToArray(), CompressionLevel.Min, (object? _, ArchiveProgressEventArgs archiveProgressEventArgs) =>
+                                    if (ContainerOSWrapperBuilder.IsWrapperPackage(cbs))
                                     {
-                                        string fileNameParsed;
-                                        if (string.IsNullOrEmpty(archiveProgressEventArgs.CurrentFileName))
-                                        {
-                                            fileNameParsed = $"Unknown ({archiveProgressEventArgs.CurrentFileNumber})";
-                                        }
-                                        else
-                                        {
-                                            fileNameParsed = archiveProgressEventArgs.CurrentFileName;
-                                        }
+                                        // This is a Wrapper package that needs to be contained in a wim.
+                                        // First index of a wim wraper package contains said cbs component
+                                        // (same content as the cab we would have generated normally
+                                        // Second index contains the whole content of the directory in
+                                        // the windows installation at the "ApplyTo" location
+                                        // Note: The ApplyTo path is relative to WINDIR (ApplyTo can be equal to
+                                        // "\Containers\Vail\BaseLayer" and the directory is in "C:\Windows\Containers\Vail\BaseLayer"
 
-                                        uint percentage = (uint)Math.Floor((double)archiveProgressEventArgs.CurrentFileNumber * 50 / archiveProgressEventArgs.TotalFiles) + 50;
+                                        // Still build the cab for now
+                                        CabinetBuilder.BuildCab(cabFile, fileMappings, ref fileStatus);
 
-                                        if (percentage != oldPercentage)
-                                        {
-                                            oldPercentage = percentage;
-                                            string progressBarString = Logging.GetDISMLikeProgressBar(percentage);
-
-                                            Logging.Log(progressBarString, returnLine: false);
-                                        }
-
-                                        if (fileNameParsed != oldFileName)
-                                        {
-                                            Logging.Log();
-                                            Logging.Log(new string(' ', fileStatus.Length));
-                                            Logging.Log(Logging.GetDISMLikeProgressBar(0), returnLine: false);
-
-                                            Console.SetCursorPosition(0, Console.CursorTop - 2);
-
-                                            oldFileName = fileNameParsed;
-
-                                            oldFilePercentage = uint.MaxValue;
-
-                                            fileStatus = $"Adding file {archiveProgressEventArgs.CurrentFileNumber + 1} of {archiveProgressEventArgs.TotalFiles} - {fileNameParsed}";
-                                            if (fileStatus.Length > Console.BufferWidth - 24 - 1)
-                                            {
-                                                fileStatus = $"{fileStatus[..(Console.BufferWidth - 24 - 4)]}...";
-                                            }
-
-                                            Logging.Log();
-                                            Logging.Log(fileStatus);
-                                            Logging.Log(Logging.GetDISMLikeProgressBar(0), returnLine: false);
-
-                                            Console.SetCursorPosition(0, Console.CursorTop - 2);
-                                        }
-
-                                        uint filePercentage = (uint)Math.Floor((double)archiveProgressEventArgs.CurrentFileBytesProcessed * 100 / archiveProgressEventArgs.CurrentFileTotalBytes);
-
-                                        if (filePercentage != oldFilePercentage)
-                                        {
-                                            oldFilePercentage = filePercentage;
-                                            string progressBarString = Logging.GetDISMLikeProgressBar(filePercentage);
-
-                                            Logging.Log();
-                                            Logging.Log();
-                                            Logging.Log(progressBarString, returnLine: false);
-
-                                            Console.SetCursorPosition(0, Console.CursorTop - 2);
-                                        }
-                                    });
+                                        ContainerOSWrapperBuilder.BuildWrapper(cabFile, fileMappings, ref fileStatus, partition, cbs.Package.ApplyTo);
+                                    }
+                                    else
+                                    {
+                                        CabinetBuilder.BuildCab(cabFile, fileMappings, ref fileStatus);
+                                    }
                                 }
                             }
 
