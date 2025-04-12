@@ -1,6 +1,4 @@
 ﻿using DiscUtils;
-using Microsoft.Deployment.Compression.Cab;
-using Microsoft.Deployment.Compression;
 using System.Runtime.InteropServices;
 
 namespace MobilePackageGen
@@ -22,7 +20,7 @@ namespace MobilePackageGen
             TempManager.CleanupTempFiles();
         }
 
-        private static IEnumerable<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
+        private static List<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
         {
             List<IPartition> fileSystemsWithServicing = [];
 
@@ -75,7 +73,7 @@ namespace MobilePackageGen
             return count;
         }
 
-        private static IEnumerable<CabinetFileInfo> GetCabinetFileInfoForCbsPackage(string inf, IPartition partition)
+        private static List<CabinetFileInfo> GetCabinetFileInfoForCbsPackage(string inf, IPartition partition)
         {
             List<CabinetFileInfo> fileMappings = [];
 
@@ -156,7 +154,7 @@ namespace MobilePackageGen
                             // Cab Creation is only supported on Windows
                             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             {
-                                if (fileMappings.Count() > 0)
+                                if (fileMappings.Any())
                                 {
                                     if (Path.GetDirectoryName(cabFile) is string directory && !Directory.Exists(directory))
                                     {
@@ -218,7 +216,6 @@ namespace MobilePackageGen
                     catch (Exception ex)
                     {
                         Logging.Log($"Error: CAB creation failed! {ex.Message}", LoggingLevel.Error);
-                        //throw;
                     }
                 }
             }

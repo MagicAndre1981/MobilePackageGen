@@ -1,8 +1,5 @@
 ﻿using DiscUtils;
-using Microsoft.Deployment.Compression;
-using Microsoft.Deployment.Compression.Cab;
 using MobilePackageGen.GZip;
-using System.Data;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
 
@@ -19,7 +16,7 @@ namespace MobilePackageGen
                 $"{(string.IsNullOrEmpty(dsm.Resolution) == true ? "" : $"_Res_{dsm.Resolution}")}";
         }
 
-        private static IEnumerable<CabinetFileInfo> GetCabinetFileInfoForDsmPackage(XmlDsm.Package dsm, IPartition partition, IEnumerable<IDisk> disks)
+        private static List<CabinetFileInfo> GetCabinetFileInfoForDsmPackage(XmlDsm.Package dsm, IPartition partition, IEnumerable<IDisk> disks)
         {
             List<CabinetFileInfo> fileMappings = [];
 
@@ -315,7 +312,7 @@ namespace MobilePackageGen
                 }
                 else
                 {
-                    //Logging.Log($"\rError: File not found! {normalized}\n", LoggingLevel.Error);
+                    Logging.Log($"\rError: File not found! {normalized}\n", LoggingLevel.Error);
                 }
             }
 
@@ -337,7 +334,7 @@ namespace MobilePackageGen
             TempManager.CleanupTempFiles();
         }
 
-        private static IEnumerable<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
+        private static List<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
         {
             List<IPartition> fileSystemsWithServicing = [];
 
@@ -452,27 +449,6 @@ namespace MobilePackageGen
 
                         string fileStatus = "";
 
-                        /*string newCabFile = cabFile;
-
-                        int fileIndex = 2;
-
-                        while (File.Exists(newCabFile))
-                        {
-                            string extension = Path.GetExtension(cabFile);
-                            if (!string.IsNullOrEmpty(extension))
-                            {
-                                newCabFile = $"{cabFile[..^extension.Length]} ({fileIndex}){extension}";
-                            }
-                            else
-                            {
-                                newCabFile = $"{cabFile} ({fileIndex})";
-                            }
-
-                            fileIndex++;
-                        }
-
-                        cabFile = newCabFile;*/
-
                         if (!File.Exists(cabFile))
                         {
                             IEnumerable<CabinetFileInfo> fileMappings = GetCabinetFileInfoForDsmPackage(dsm, partition, disks);
@@ -480,7 +456,7 @@ namespace MobilePackageGen
                             // Cab Creation is only supported on Windows
                             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             {
-                                if (fileMappings.Count() > 0)
+                                if (fileMappings.Any())
                                 {
                                     if (Path.GetDirectoryName(cabFile) is string directory && !Directory.Exists(directory))
                                     {
@@ -542,7 +518,6 @@ namespace MobilePackageGen
                     catch (Exception ex)
                     {
                         Logging.Log($"Error: CAB creation failed! {ex.Message}", LoggingLevel.Error);
-                        //throw;
                     }
                 }
             }

@@ -1,6 +1,4 @@
 ﻿using DiscUtils;
-using Microsoft.Deployment.Compression;
-using Microsoft.Deployment.Compression.Cab;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
 
@@ -13,7 +11,7 @@ namespace MobilePackageGen
             return $"{cbs.AssemblyIdentity.Name}~{cbs.AssemblyIdentity.PublicKeyToken}~{cbs.AssemblyIdentity.ProcessorArchitecture}~{(cbs.AssemblyIdentity.Language == "neutral" ? "" : cbs.AssemblyIdentity.Language)}~{cbs.AssemblyIdentity.Version}";
         }
 
-        private static IEnumerable<CabinetFileInfo> GetCabinetFileInfoForCbsPackage(XmlMum.Assembly cbs, IPartition partition, IEnumerable<IDisk> disks)
+        private static List<CabinetFileInfo> GetCabinetFileInfoForCbsPackage(XmlMum.Assembly cbs, IPartition partition, IEnumerable<IDisk> disks)
         {
             List<CabinetFileInfo> fileMappings = [];
 
@@ -260,7 +258,6 @@ namespace MobilePackageGen
                     else
                     {
                         Logging.Log($"\rError: File not found! {normalized}\n", LoggingLevel.Error);
-                        //throw new FileNotFoundException(normalized);
                     }
                 }
             }
@@ -283,7 +280,7 @@ namespace MobilePackageGen
             TempManager.CleanupTempFiles();
         }
 
-        private static IEnumerable<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
+        private static List<IPartition> GetPartitionsWithServicing(IEnumerable<IDisk> disks)
         {
             List<IPartition> fileSystemsWithServicing = [];
 
@@ -392,27 +389,6 @@ namespace MobilePackageGen
 
                         string fileStatus = "";
 
-                        /*string newCabFile = cabFile;
-
-                        int fileIndex = 2;
-
-                        while (File.Exists(newCabFile))
-                        {
-                            string extension = Path.GetExtension(cabFile);
-                            if (!string.IsNullOrEmpty(extension))
-                            {
-                                newCabFile = $"{cabFile[..^extension.Length]} ({fileIndex}){extension}";
-                            }
-                            else
-                            {
-                                newCabFile = $"{cabFile} ({fileIndex})";
-                            }
-
-                            fileIndex++;
-                        }
-
-                        cabFile = newCabFile;*/
-
                         if (!File.Exists(cabFile))
                         {
                             IEnumerable<CabinetFileInfo> fileMappings = GetCabinetFileInfoForCbsPackage(cbs, partition, disks);
@@ -420,7 +396,7 @@ namespace MobilePackageGen
                             // Cab Creation is only supported on Windows
                             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             {
-                                if (fileMappings.Count() > 0)
+                                if (fileMappings.Any())
                                 {
                                     if (Path.GetDirectoryName(cabFile) is string directory && !Directory.Exists(directory))
                                     {
@@ -500,7 +476,6 @@ namespace MobilePackageGen
                     catch (Exception ex)
                     {
                         Logging.Log($"Error: CAB creation failed! {ex.Message}", LoggingLevel.Error);
-                        //throw;
                     }
                 }
             }
