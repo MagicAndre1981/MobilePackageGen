@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\thirdparty\EDLProgram2VHDX\QualcommEDLProgramStream\QualcommEDLProgramStream.csproj" />
     <ProjectReference Include="..\Archives.DiscUtils\Archives.DiscUtils.csproj" />
     <ProjectReference Include="..\..\thirdparty\Img2Ffu\Img2Ffu.Library\Img2Ffu.Library.csproj" />
     <ProjectReference Include="..\..\thirdparty\StorageSpace\StorageSpace\StorageSpace.csproj" />
