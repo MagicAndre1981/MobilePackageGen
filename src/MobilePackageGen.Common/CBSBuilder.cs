@@ -149,6 +149,11 @@ namespace MobilePackageGen
                         normalized = Path.Combine(WindowsSideBySideManifestsFolderPath, normalized.Split('\\')[^1]);
                     }
 
+                    if (!fileSystem.Exists(normalized) && architecture?.Contains("arm64.arm") == true && fileSystem.Exists(normalized.Replace(@"windows\sysarm32", @"windows\system32")))
+                    {
+                        normalized = normalized.Replace(@"windows\sysarm32", @"windows\system32");
+                    }
+
                     CabinetFileInfo? cabinetFileInfo = null;
 
                     // If we end in bin, and the package is marked binary partition, this is a partition on one of the device disks, retrieve it
