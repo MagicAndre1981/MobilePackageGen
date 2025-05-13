@@ -6,6 +6,8 @@ namespace MobilePackageGen
 {
     public class CBSBuilder
     {
+        private static bool USE_UNCOMPRESSED_MANIFEST_FILES = false;
+
         private static string GetCBSComponentName(XmlMum.Assembly cbs)
         {
             return $"{cbs.AssemblyIdentity.Name}~{cbs.AssemblyIdentity.PublicKeyToken}~{cbs.AssemblyIdentity.ProcessorArchitecture}~{(cbs.AssemblyIdentity.Language == "neutral" ? "" : cbs.AssemblyIdentity.Language)}~{cbs.AssemblyIdentity.Version}";
@@ -49,9 +51,12 @@ namespace MobilePackageGen
                         fileName = fileName[1..];
                     }
 
+                    bool isManifest = false;
+
                     // If a manifest file is without any path, it must be retrieved from the manifest directory
                     if (!fileName.Contains('\\') && fileName.EndsWith(".manifest"))
                     {
+                        isManifest = true;
                         fileName = Path.Combine(WindowsSideBySideManifestsFolderPath, fileName);
                     }
 
@@ -246,10 +251,22 @@ namespace MobilePackageGen
                         }
                         else
                         {
+                            Stream fileStream = fileSystem.OpenFile(normalized, FileMode.Open, FileAccess.Read);
+                            if (isManifest && USE_UNCOMPRESSED_MANIFEST_FILES)
+                            {
+                                // LibSxS is only supported on Windows
+                                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                                {
+                                    throw new NotImplementedException("The compression algorithm this data block uses is not currently implemented.");
+                                }
+
+                                fileStream = LibSxS.Delta.DeltaAPI.LoadManifest(fileStream);
+                            }
+
                             cabinetFileInfo = new CabinetFileInfo()
                             {
                                 FileName = packageFile.Cabpath,
-                                FileStream = fileSystem.OpenFile(normalized, FileMode.Open, FileAccess.Read),
+                                FileStream = fileStream,
                                 Attributes = fileSystem.GetAttributes(normalized) & ~FileAttributes.ReparsePoint,
                                 DateTime = fileSystem.GetLastWriteTime(normalized)
                             };
