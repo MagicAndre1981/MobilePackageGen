@@ -26,8 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LTRData.DiscUtils.FileSystems" Version="1.0.51" />
-    <PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.51" />
+    <PackageReference Include="LTRData.DiscUtils.FileSystems" Version="1.0.55" />
+    <PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.55" />
   </ItemGroup>
 
 </Project>
