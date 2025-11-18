@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="LTRData.DiscUtils.Registry" Version="1.0.55" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\MobilePackageGen.Common\MobilePackageGen.Common.csproj" />
   </ItemGroup>
 

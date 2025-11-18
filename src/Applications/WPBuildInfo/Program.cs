@@ -37,10 +37,15 @@ Version: 1.0.7.0
             FindKernel(disks);
             Logging.Log();
 
+            FindRegistry(disks);
+            Logging.Log();
+
             FindPackages(disks);
             Logging.Log();
 
             Console.WriteLine("The operation completed successfully.");
+
+            Console.ReadLine();
         }
 
         private static void FindBuildInfo(IEnumerable<IDisk> disks)
@@ -98,6 +103,34 @@ Version: 1.0.7.0
                                 ntosstrm.Read(buffer, 0, buffer.Length);
 
                                 Logging.Log($"NTOS: NT ({partition.Name}): {GetBuildNumberFromPE(buffer)}");
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void FindRegistry(IEnumerable<IDisk> disks)
+        {
+            foreach (IDisk disk in disks)
+            {
+                foreach (IPartition partition in disk.Partitions)
+                {
+                    if (partition.FileSystem is IFileSystem fileSystem)
+                    {
+                        try
+                        {
+                            if (fileSystem.FileExists(@"Windows\System32\config\SOFTWARE"))
+                            {
+                                using DiscUtils.Streams.SparseStream hiveStream = fileSystem.OpenFile(@"Windows\System32\config\SOFTWARE", FileMode.Open, FileAccess.Read);
+
+                                string version = DetectionHandler.ExtractVersionInfo2(hiveStream);
+
+                                Logging.Log($"NTOS: Registry ({partition.Name}): {version}");
                             }
                         }
                         catch
