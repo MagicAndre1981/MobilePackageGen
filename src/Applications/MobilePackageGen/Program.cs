@@ -28,8 +28,12 @@ Version: 1.0.7.0
 
             BuildMetadataHandler.GetOEMInput(disks, outputFolder);
             BuildMetadataHandler.GetFeatureManifests(disks, outputFolder);
+
+            List<AppxPackage> appList = BuildMetadataHandler.GetAppList(disks, outputFolder);
+
+            AppBuilder.BuildApps(disks, outputFolder, appList);
+
             UpdateHistory.UpdateHistory? updateHistory = BuildMetadataHandler.GetUpdateHistory(disks);
-            BuildMetadataHandler.GetAdditionalContent(disks, outputFolder);
 
             CBSBuilder.BuildCBS(disks, outputFolder, updateHistory);
 

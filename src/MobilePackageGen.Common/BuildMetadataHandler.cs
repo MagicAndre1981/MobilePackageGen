@@ -1,4 +1,6 @@
 ﻿using DiscUtils;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace MobilePackageGen
 {
@@ -52,6 +54,68 @@ namespace MobilePackageGen
             }
 
             return null;
+        }
+
+        public static List<AppxPackage> ReadAppxPackagesFromFM(Stream strm)
+        {
+            List<AppxPackage> appList = [];
+
+            XDocument xdoc = XDocument.Load(strm, LoadOptions.None);
+            XNamespace ns = xdoc.Root!.GetDefaultNamespace();
+            
+            IEnumerable<XElement> packages = xdoc.Descendants(ns + "AppXPackages");
+
+            if (packages != null)
+            {
+                foreach (XElement package in packages.Elements())
+                {
+                    string name = package.Attribute("Name")?.Value;
+                    string path = package.Attribute("Path")?.Value;
+                    string license = package.Attribute("LicenseFile")?.Value;
+                    string id = package.Attribute("ID")?.Value;
+                    string cputype = package.Attribute("CPUType")?.Value;
+                    appList.Add(new AppxPackage(name, path, license, id, cputype is null ? [] : cputype.Split(";")));
+                }
+            }
+
+            xdoc = null;
+
+            return appList;
+        }
+
+        public static List<AppxPackage> GetAppList(IEnumerable<IDisk> disks, string destination_path)
+        {
+            List<AppxPackage> appList = [];
+            string OEMInputPath = Path.Combine(destination_path, "OEMInput.xml");
+
+            if (!File.Exists(OEMInputPath))
+            {
+                return [];
+            }
+
+            string[] FMs = File.ReadAllLines(OEMInputPath);
+            FMs = [.. FMs.Where(x => x.Contains("<AdditionalFM>")).Select(x => x.Split(">")[1].Split("<")[0])];
+
+            foreach (string FM in FMs)
+            {
+                string destFM = Path.Combine(destination_path, ReformatDestinationPath(FM));
+
+                if (File.Exists(destFM))
+                {
+                    using Stream strm = File.OpenRead(destFM);
+
+                    try
+                    {
+                        appList.AddRange(ReadAppxPackagesFromFM(strm));
+                    }
+                    catch (XmlException)
+                    {
+                        // Skip all unreadable xml
+                    }
+                }
+            }
+
+            return appList;
         }
 
         public static void GetFeatureManifests(IEnumerable<IDisk> disks, string destination_path)
@@ -170,92 +234,6 @@ namespace MobilePackageGen
 
                                 File.SetAttributes(destOemInput, Attributes);
                                 File.SetLastWriteTime(destOemInput, LastWriteTime);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        public static void GetAdditionalContent(IEnumerable<IDisk> disks, string destination_path)
-        {
-            foreach (IDisk disk in disks)
-            {
-                foreach (IPartition partition in disk.Partitions)
-                {
-                    IFileSystem? fileSystem = partition.FileSystem;
-
-                    if (fileSystem != null)
-                    {
-                        if (partition.Name.Equals("PreInstalled", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            // PreInstalled Partition
-                            // Extracted APPX, Licenses
-                            if (fileSystem.DirectoryExists("AppData") && fileSystem.DirectoryExists("WindowsApps"))
-                            {
-                                string[] LicenseFiles = [.. fileSystem.GetFiles("AppData", "*.xml", SearchOption.TopDirectoryOnly)];
-
-                                foreach (string LicenseFile in LicenseFiles)
-                                {
-                                    Logging.Log($"Extracting {Path.GetFileNameWithoutExtension(LicenseFile)} license file...");
-
-                                    string destFolder = Path.Combine(destination_path, "PreInstalled", "Licenses");
-
-                                    if (!Directory.Exists(destFolder))
-                                    {
-                                        Directory.CreateDirectory(destFolder);
-                                    }
-
-                                    string destFile = Path.Combine(destFolder, Path.GetFileName(LicenseFile));
-
-                                    if (!File.Exists(destFile))
-                                    {
-                                        using Stream PreInstalledFileStream = fileSystem.OpenFile(LicenseFile, FileMode.Open, FileAccess.Read);
-                                        FileAttributes Attributes = fileSystem.GetAttributes(LicenseFile) & ~FileAttributes.ReparsePoint;
-                                        DateTime LastWriteTime = fileSystem.GetLastWriteTime(LicenseFile);
-
-                                        using (Stream outputFile = File.Create(destFile))
-                                        {
-                                            PreInstalledFileStream.CopyTo(outputFile);
-                                        }
-
-                                        File.SetAttributes(destFile, Attributes);
-                                        File.SetLastWriteTime(destFile, LastWriteTime);
-                                    }
-                                }
-
-                                string[] AppFolders = [.. fileSystem.GetDirectories("WindowsApps", "*", SearchOption.TopDirectoryOnly)];
-                                foreach (string AppFolder in AppFolders)
-                                {
-                                    Logging.Log($"Extracting {Path.GetFileName(AppFolder)} app files...");
-
-                                    string[] AppFiles = [.. fileSystem.GetFiles(AppFolder, "*", SearchOption.AllDirectories)];
-                                    foreach (string AppFile in AppFiles)
-                                    {
-                                        string destFolder = Path.Combine(destination_path, "PreInstalled", "Apps", string.Join("\\", AppFile[12..].Split("\\")[..^1]));
-                                        if (!Directory.Exists(destFolder))
-                                        {
-                                            Directory.CreateDirectory(destFolder);
-                                        }
-
-                                        string destFile = Path.Combine(destFolder, Path.GetFileName(AppFile));
-
-                                        if (!File.Exists(destFile))
-                                        {
-                                            using Stream PreInstalledFileStream = fileSystem.OpenFile(AppFile, FileMode.Open, FileAccess.Read);
-                                            FileAttributes Attributes = fileSystem.GetAttributes(AppFile) & ~FileAttributes.ReparsePoint;
-                                            DateTime LastWriteTime = fileSystem.GetLastWriteTime(AppFile);
-
-                                            using (Stream outputFile = File.Create(destFile))
-                                            {
-                                                PreInstalledFileStream.CopyTo(outputFile);
-                                            }
-
-                                            File.SetAttributes(destFile, Attributes);
-                                            File.SetLastWriteTime(destFile, LastWriteTime);
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
