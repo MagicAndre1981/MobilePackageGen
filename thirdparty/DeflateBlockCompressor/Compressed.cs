@@ -86,7 +86,9 @@ public static class Compressed
                         
                         // Process the final zlib block
                         byte[] finalData = wrapper.DeflateFinish();
-                        
+
+                        finalData = [.. finalData, .. new byte[] { 0x03, 0x00 }];
+
                         if (finalData.Length > 0)
                         {
                             var finalBlock = new DeflateBlock

@@ -92,12 +92,12 @@ public class MsixBuilder : IAsyncDisposable
             // This is temp!
             //int dosTime = GetDosTime(entry.ModificationTime);
             string filePath = System.IO.Path.Combine(inputPath, entry.FullPath.Replace('/', System.IO.Path.DirectorySeparatorChar));
-            if (entry.FullPath.Equals("[Content_Types].xml") && !System.IO.File.Exists(entry.FullPath))
+            if (entry.FullPath.Equals("[Content_Types].xml") && !File.Exists(entry.FullPath))
             {
                 filePath = System.IO.Path.Combine(inputPath, "AppxBlockMap.xml");
             }
 
-            int dosTime = GetDosTime(System.IO.File.GetLastWriteTime(filePath));
+            int dosTime = GetDosTime(File.GetLastWriteTime(filePath));
             writer.Write(dosTime);
 
             if (entry.FullPath.Equals("[Content_Types].xml") ||
@@ -185,12 +185,12 @@ public class MsixBuilder : IAsyncDisposable
                 // This is temp!
                 //int dosTime = GetDosTime(entry.ModificationTime);
                 string filePath = System.IO.Path.Combine(inputPath, entry.FullPath.Replace('/', System.IO.Path.DirectorySeparatorChar));
-                if (entry.FullPath.Equals("[Content_Types].xml") && !System.IO.File.Exists(entry.FullPath))
+                if (entry.FullPath.Equals("[Content_Types].xml") && !File.Exists(entry.FullPath))
                 {
                     filePath = System.IO.Path.Combine(inputPath, "AppxBlockMap.xml");
                 }
 
-                int dosTime = GetDosTime(System.IO.File.GetLastWriteTime(filePath));
+                int dosTime = GetDosTime(File.GetLastWriteTime(filePath));
                 writer.Write((int)dosTime);
                 writer.Write(await entry.Original.Crc32());
 

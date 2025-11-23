@@ -34,7 +34,7 @@ public static class Extensions
 
                     // Si se leyeron menos bytes de los esperados, ajustamos el buffer.
                     if (bytesLeidos < tamaño)
-                        buffer = buffer.Take(bytesLeidos).ToArray();
+                        buffer = [.. buffer.Take(bytesLeidos)];
 
                     observer.OnNext(buffer);
 

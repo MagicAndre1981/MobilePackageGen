@@ -5,7 +5,7 @@ namespace DotnetPackaging.Msix.Core
 {
     public static class MakeAppxDeflate
     {
-        public static readonly bool USE_EXTERNAL_DEFLATE_VIA_MAKEAPPX = true;
+        public static readonly bool USE_EXTERNAL_DEFLATE_VIA_MAKEAPPX = false;
 
         private static readonly string MAKEAPPX_LOCATION = @"RemakeAppxTestContent\i386\makeappx.exe";
         private static readonly string AppxContent = @"RemakeAppxTestContent\Minimal\Contents";
@@ -21,20 +21,19 @@ namespace DotnetPackaging.Msix.Core
 
         public static async Task<byte[]?> GetMakeAppxVersionOfDeflate(byte[] inputBuffer)
         {
-            // Data error this way, todo, look into it
             if (inputBuffer.Length == 0)
             {
-                return [];
+                return [0x03, 0x00];
             }
 
-            if (System.IO.File.Exists(AppxOutput))
+            if (File.Exists(AppxOutput))
             {
                 await Task.Delay(1000);
 
-                System.IO.File.Delete(AppxOutput);
+                File.Delete(AppxOutput);
             }
 
-            System.IO.File.WriteAllBytes(System.IO.Path.Combine(AppxContent, "HelloWorld.exe"), inputBuffer);
+            File.WriteAllBytes(System.IO.Path.Combine(AppxContent, "HelloWorld.exe"), inputBuffer);
 
             string args = $"pack -d \"{AppxContent}\" -p \"{AppxOutput}\" -l";
 
@@ -51,7 +50,7 @@ namespace DotnetPackaging.Msix.Core
 
             List<byte> compressed = [];
 
-            using (Stream appxStream = System.IO.File.OpenRead(AppxOutput))
+            using (Stream appxStream = File.OpenRead(AppxOutput))
             {
                 appxStream.Seek(0x118, SeekOrigin.Begin);
 
@@ -74,9 +73,9 @@ namespace DotnetPackaging.Msix.Core
                 }
             }
 
-            if (System.IO.File.Exists(AppxOutput))
+            if (File.Exists(AppxOutput))
             {
-                System.IO.File.Delete(AppxOutput);
+                File.Delete(AppxOutput);
             }
 
             if (compressed[^1] == 0x00 && compressed[^2] == 0x03 && compressed[^3] == 0xFF && compressed[^4] == 0xFF)

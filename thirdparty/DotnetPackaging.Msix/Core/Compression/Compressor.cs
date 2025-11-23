@@ -42,7 +42,7 @@ public static class Compressor
                 {
                     try
                     {
-                        byte[] array = block.ToArray();
+                        byte[] array = [.. block];
                         deflateStream.Write(array, 0, array.Length);
                         deflateStream.Flush(); // Hacer flush del DeflateStream
                         pipe.Writer.FlushAsync().GetAwaiter().GetResult(); // Hacer flush del PipeWriter

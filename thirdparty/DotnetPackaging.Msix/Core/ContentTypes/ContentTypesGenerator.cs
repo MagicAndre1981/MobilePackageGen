@@ -256,7 +256,7 @@ public static class ContentTypesGenerator
             }
         }
 
-        return new ContentTypesModel(defaults.ToImmutableList(), overrides.ToImmutableList());
+        return new ContentTypesModel([.. defaults], [.. overrides]);
     }
 
     private static string NormalizePartName(string part)

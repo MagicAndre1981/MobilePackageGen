@@ -81,15 +81,13 @@ public class MsixPackager(Maybe<ILogger> logger)
 
     private IByteSource Compress(IEnumerable<INamedByteSourceWithPath> files, bool bundleMode, bool unsignedMode, string inputPath)
     {
-        return ByteSource.FromAsyncStreamFactory(() => GetStream(files.ToList(), bundleMode, unsignedMode, inputPath));
+        return ByteSource.FromAsyncStreamFactory(() => GetStream([.. files], bundleMode, unsignedMode, inputPath));
     }
 
     private async Task<Stream> GetStream(IList<INamedByteSourceWithPath> files, bool bundleMode, bool unsignedMode, string inputPath)
     {
         MemoryStream zipStream = new();
-        List<INamedByteSourceWithPath> orderedFiles = files
-            .OrderBy(file => file, FileOrderingComparer)
-            .ToList();
+        List<INamedByteSourceWithPath> orderedFiles = [.. files.OrderBy(file => file, FileOrderingComparer)];
 
         await using (MsixBuilder zipper = new(zipStream, logger, inputPath))
         {
@@ -155,26 +153,27 @@ public class MsixPackager(Maybe<ILogger> logger)
 
                 blocks = await file.Bytes.Flatten().Buffer(64 * 1024).Select(list => new DeflateBlock
                 {
-                    CompressedData = list.ToArray(),
-                    OriginalData = list.ToArray(),
+                    CompressedData = [.. list],
+                    OriginalData = [.. list],
                 }).ToList();
             }
             else
             {
                 if (MakeAppxDeflate.USE_EXTERNAL_DEFLATE_VIA_MAKEAPPX)
                 {
+                    IObservable<byte[]> compressionBlocks = MakeAppxDeflate.GetMakeAppxVersionOfDeflate(ByteSource.FromByteObservable(file.Bytes));
                     entry = new MsixEntry
                     {
                         Original = file,
-                        Compressed = ByteSource.FromByteObservable(MakeAppxDeflate.GetMakeAppxVersionOfDeflate(ByteSource.FromByteObservable(file.Bytes))),
+                        Compressed = ByteSource.FromByteObservable(compressionBlocks),
                         FullPath = file.FullPath(),
                         CompressionLevel = CompressionLevel.Optimal
                     };
 
-                    blocks = await file.Bytes.Flatten().Buffer(64 * 1024).Select(list => new DeflateBlock
+                    blocks = await file.Bytes.Flatten().Buffer(Compressed.DefaultBlockSize).Select(list => new DeflateBlock
                     {
-                        CompressedData = MakeAppxDeflate.GetMakeAppxVersionOfDeflate(list.ToArray()).GetAwaiter().GetResult(),
-                        OriginalData = list.ToArray(),
+                        CompressedData = MakeAppxDeflate.GetMakeAppxVersionOfDeflate([.. list]).GetAwaiter().GetResult(),
+                        OriginalData = [.. list],
                     }).ToList();
                 }
                 else
@@ -189,6 +188,21 @@ public class MsixPackager(Maybe<ILogger> logger)
                     };
 
                     blocks = await compressionBlocks.ToList();
+
+                    /*IObservable<byte[]> compressionBlocks = ByteSource.FromByteObservable(file.Bytes).Compressed();
+                    entry = new MsixEntry
+                    {
+                        Original = file,
+                        Compressed = ByteSource.FromByteObservable(compressionBlocks),
+                        FullPath = file.FullPath(),
+                        CompressionLevel = CompressionLevel.Optimal
+                    };
+
+                    blocks = await file.Bytes.Flatten().Buffer(Compressed.DefaultBlockSize).Select(list => new DeflateBlock
+                    {
+                        CompressedData = ByteSource.FromBytes([.. list]).Bytes.Compressed().Array(),
+                        OriginalData = [.. list],
+                    }).ToList();*/
                 }
             }
 
