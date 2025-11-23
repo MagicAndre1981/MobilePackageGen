@@ -21,6 +21,7 @@ namespace DotnetPackaging.Msix.Core
 
         public static async Task<byte[]?> GetMakeAppxVersionOfDeflate(byte[] inputBuffer)
         {
+            // Data error this way, todo, look into it
             if (inputBuffer.Length == 0)
             {
                 return [];
