@@ -237,6 +237,8 @@ namespace MobilePackageGen
                     }
                 }
 
+                RemakeAppx.Program.MakeAppx(destination, $"{destination}.appx", false, false).Wait();
+
                 // --------------------------
 
                 if (i != packagesCount - 1)
