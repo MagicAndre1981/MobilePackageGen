@@ -29,7 +29,7 @@ Version: 1.0.7.0
             BuildMetadataHandler.GetOEMInput(disks, outputFolder);
             BuildMetadataHandler.GetFeatureManifests(disks, outputFolder);
 
-            List<AppxPackage> appList = BuildMetadataHandler.GetAppList(disks, outputFolder);
+            List<AppxPackage> appList = BuildMetadataHandler.GetAppList(disks);
 
             AppBuilder.BuildApps(disks, outputFolder, appList);
 

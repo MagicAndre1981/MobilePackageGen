@@ -1,4 +1,5 @@
 ﻿using DiscUtils;
+using MobilePackageGen.UpdateHistory;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -62,7 +63,7 @@ namespace MobilePackageGen
 
             XDocument xdoc = XDocument.Load(strm, LoadOptions.None);
             XNamespace ns = xdoc.Root!.GetDefaultNamespace();
-            
+
             IEnumerable<XElement> packages = xdoc.Descendants(ns + "AppXPackages");
 
             if (packages != null)
@@ -83,34 +84,58 @@ namespace MobilePackageGen
             return appList;
         }
 
-        public static List<AppxPackage> GetAppList(IEnumerable<IDisk> disks, string destination_path)
+        public static List<AppxPackage> GetAppList(IEnumerable<IDisk> disks)
         {
             List<AppxPackage> appList = [];
-            string OEMInputPath = Path.Combine(destination_path, "OEMInput.xml");
 
-            if (!File.Exists(OEMInputPath))
+            string? content = GetOEMInputContent(disks);
+
+            if (content == null)
             {
                 return [];
             }
 
-            string[] FMs = File.ReadAllLines(OEMInputPath);
+            string[] FMs = content.Split("\n");
+
             FMs = [.. FMs.Where(x => x.Contains("<AdditionalFM>")).Select(x => x.Split(">")[1].Split("<")[0])];
 
             foreach (string FM in FMs)
             {
-                string destFM = Path.Combine(destination_path, ReformatDestinationPath(FM));
-
-                if (File.Exists(destFM))
+                foreach (IDisk disk in disks)
                 {
-                    using Stream strm = File.OpenRead(destFM);
+                    foreach (IPartition partition in disk.Partitions)
+                    {
+                        IFileSystem? fileSystem = partition.FileSystem;
 
-                    try
-                    {
-                        appList.AddRange(ReadAppxPackagesFromFM(strm));
-                    }
-                    catch (XmlException)
-                    {
-                        // Skip all unreadable xml
+                        if (fileSystem != null)
+                        {
+                            if (fileSystem.FileExists($@"Windows\ImageUpdate\FeatureManifest\Microsoft\{Path.GetFileName(FM)}"))
+                            {
+                                using Stream strm = fileSystem.OpenFile($@"Windows\ImageUpdate\FeatureManifest\Microsoft\{Path.GetFileName(FM)}", FileMode.Open, FileAccess.Read);
+
+                                try
+                                {
+                                    appList.AddRange(ReadAppxPackagesFromFM(strm));
+                                }
+                                catch (XmlException)
+                                {
+                                    // Skip all unreadable xml
+                                }
+                            }
+                            else if (fileSystem.FileExists($@"Windows\ImageUpdate\FeatureManifest\OEM\{Path.GetFileName(FM)}"))
+                            {
+                                using Stream strm = fileSystem.OpenFile($@"Windows\ImageUpdate\FeatureManifest\OEM\{Path.GetFileName(FM)}", FileMode.Open, FileAccess.Read);
+
+                                try
+                                {
+                                    appList.AddRange(ReadAppxPackagesFromFM(strm));
+                                }
+                                catch (XmlException)
+                                {
+                                    // Skip all unreadable xml
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -118,16 +143,42 @@ namespace MobilePackageGen
             return appList;
         }
 
+        public static string? GetOEMInputContent(IEnumerable<IDisk> disks)
+        {
+            foreach (IDisk disk in disks)
+            {
+                foreach (IPartition partition in disk.Partitions)
+                {
+                    IFileSystem? fileSystem = partition.FileSystem;
+
+                    if (fileSystem != null)
+                    {
+                        if (fileSystem.FileExists(@"Windows\ImageUpdate\OEMInput.xml"))
+                        {
+                            using Stream OEMInputFileStream = fileSystem.OpenFile(@"Windows\ImageUpdate\OEMInput.xml", FileMode.Open, FileAccess.Read);
+                            using StreamReader streamReader = new StreamReader(OEMInputFileStream);
+                            string content = streamReader.ReadToEnd();
+
+                            return content;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public static void GetFeatureManifests(IEnumerable<IDisk> disks, string destination_path)
         {
-            string OEMInputPath = Path.Combine(destination_path, "OEMInput.xml");
+            string? content = GetOEMInputContent(disks);
 
-            if (!File.Exists(OEMInputPath))
+            if (content == null)
             {
                 return;
             }
 
-            string[] FMs = File.ReadAllLines(OEMInputPath);
+            string[] FMs = content.Split("\n");
+
             FMs = [.. FMs.Where(x => x.Contains("<AdditionalFM>")).Select(x => x.Split(">")[1].Split("<")[0])];
 
             foreach (string FM in FMs)
@@ -407,7 +458,7 @@ namespace MobilePackageGen
             string cabFile = "";
 
             bool found = false;
-            
+
             string infFileName = Path.GetFileNameWithoutExtension(inf);
 
             if (updateHistory != null)
