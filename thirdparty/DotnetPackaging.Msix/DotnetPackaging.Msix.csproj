@@ -6,15 +6,15 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Include="System.IO.Hashing" Version="9.0.3" />
-      <PackageReference Include="Zafiro.DivineBytes" Version="15.0.9" />
-    </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="System.IO.Hashing" Version="10.0.0" />
+		<PackageReference Include="Zafiro.DivineBytes" Version="41.2.10" />
+	</ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\DeflateBlockCompressor\DeflateBlockCompressor.csproj" />
-    </ItemGroup>
-
+	<ItemGroup>
+		<ProjectReference Include="..\DeflateBlockCompressor\DeflateBlockCompressor.csproj" />
+	</ItemGroup>
+    
     <ItemGroup>
       <None Update="RemakeAppxTestContent\i386\appxpackaging.dll">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -47,5 +47,4 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>
-
 </Project>

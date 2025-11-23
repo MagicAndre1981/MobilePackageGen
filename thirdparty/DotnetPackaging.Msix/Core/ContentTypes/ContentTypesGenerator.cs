@@ -3,8 +3,7 @@ using Path = System.IO.Path;
 namespace DotnetPackaging.Msix.Core.ContentTypes;
 
 /// <summary>
-/// Generador de Content Types que, a partir de la colecci贸n de nombres de partes,
-/// construye un modelo inmutable con las entradas Default y Override.
+/// Genera el modelo de tipos de contenido ([Content_Types].xml) emulando el comportamiento de makeappx.
 /// </summary>
 public static class ContentTypesGenerator
 {
@@ -100,7 +99,7 @@ public static class ContentTypesGenerator
         { "xsl", "application/xslt+xml" },
         { "xslt", "application/xslt+xml" },
         { "zip", "application/x-zip-compressed" },
-        // Puedes agregar m谩s seg煤n sea necesario.
+        // Puedes agregar m醩 seg鷑 sea necesario.
     };
 
 
@@ -196,13 +195,13 @@ public static class ContentTypesGenerator
         { "xsl", "application/xslt+xml" },
         { "xslt", "application/xslt+xml" },
         { "zip", "application/x-zip-compressed" },
-        // Puedes agregar m谩s seg煤n sea necesario.
+        // Puedes agregar m醩 seg鷑 sea necesario.
     };
 
     // Diccionario de overrides predefinidos para partes conocidas.
     private static readonly Dictionary<string, string> OverrideMappings = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Si se incluye el manifiesto, se puede generar como override o default, seg煤n la estrategia.
+        // Si se incluye el manifiesto, se puede generar como override o default, seg鷑 la estrategia.
         // En el ejemplo de makeappx se trata a AppxManifest.xml como un archivo con default (al final aparece en el block map),
         // pero para [Content_Types].xml se suele definir override para el block map.
         { "/AppxBlockMap.xml", "application/vnd.ms-appx.blockmap+xml" },
@@ -211,64 +210,63 @@ public static class ContentTypesGenerator
         // Puedes agregar otros overrides si es necesario.
     };
 
-    /// <summary>
-    /// Genera un modelo inmutable de ContentTypesModel a partir de una colecci贸n de nombres de partes del paquete.
-    /// Se agregan entradas Default basadas en la extensi贸n y se a帽aden overrides para nombres conocidos.
-    /// </summary>
-    /// <param name="partNames">Colecci贸n de nombres de partes (por ejemplo, "folder/file.ext").</param>
-    /// <returns>ContentTypesModel inmutable.</returns>
     public static ContentTypesModel Create(IEnumerable<string> partNames, bool bundleMode)
     {
         if (partNames == null)
             throw new ArgumentNullException(nameof(partNames));
 
-        ImmutableDictionary<string, string>.Builder defaultsBuilder = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.OrdinalIgnoreCase);
-        ImmutableList<OverrideContentType>.Builder overridesBuilder = ImmutableList.CreateBuilder<OverrideContentType>();
+        List<DefaultContentType> defaults = [];
+        List<OverrideContentType> overrides = [];
+        HashSet<string> seenExtensions = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> seenOverrides = new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var part in partNames)
+        foreach (string part in partNames)
         {
-            // Normalizamos el nombre: aseguramos que empiece con "/" y reemplazamos '\' por '/'.
-            string normalizedPart = part.StartsWith("/") ? part : "/" + part.Replace('\\', '/');
+            string normalizedPart = NormalizePartName(part);
 
-            // Si el nombre coincide con alg煤n override predefinido, lo agregamos.
-            if (OverrideMappings.TryGetValue(normalizedPart, out var overrideContentType))
+            if (OverrideMappings.TryGetValue(normalizedPart, out string? overrideContentType))
             {
-                overridesBuilder.Add(new OverrideContentType(normalizedPart, overrideContentType));
+                if (seenOverrides.Add(normalizedPart))
+                {
+                    overrides.Add(new OverrideContentType(normalizedPart, overrideContentType));
+                }
+
+                continue;
             }
-            else
+
+            string extension = GetExtension(part);
+            if (!string.IsNullOrEmpty(extension))
             {
-                // Extraemos la extensi贸n del archivo.
-                string extension = GetExtension(part);
-                if (!string.IsNullOrEmpty(extension))
+                if (seenExtensions.Add(extension))
                 {
-                    if (!defaultsBuilder.ContainsKey(extension))
+                    if (bundleMode ? !DefaultMappingsForBundles.TryGetValue(extension, out var contentType) : !DefaultMappings.TryGetValue(extension, out contentType))
                     {
-                        if (bundleMode ? !DefaultMappingsForBundles.TryGetValue(extension, out var contentType) : !DefaultMappings.TryGetValue(extension, out contentType))
-                            contentType = "application/octet-stream";
-                        defaultsBuilder.Add(extension, contentType);
+                        contentType = "application/octet-stream";
                     }
+
+                    defaults.Add(new DefaultContentType(extension, contentType));
                 }
-                else
-                {
-                    // Si no hay extensi贸n, tratamos la parte como override.
-                    overridesBuilder.Add(new OverrideContentType(normalizedPart, "application/octet-stream"));
-                }
+
+                continue;
+            }
+
+            if (seenOverrides.Add(normalizedPart))
+            {
+                overrides.Add(new OverrideContentType(normalizedPart, "application/octet-stream"));
             }
         }
 
-        ImmutableList<DefaultContentType> defaultsList = defaultsBuilder.Select(kvp => new DefaultContentType(kvp.Key, kvp.Value))
-            .ToImmutableList();
-        ImmutableList<OverrideContentType> overridesList = overridesBuilder.ToImmutableList();
+        return new ContentTypesModel(defaults.ToImmutableList(), overrides.ToImmutableList());
+    }
 
-        return new ContentTypesModel(defaultsList, overridesList);
+    private static string NormalizePartName(string part)
+    {
+        return part.StartsWith("/") ? part : "/" + part.Replace('\\', '/');
     }
 
     private static string GetExtension(string partName)
     {
-        // Extrae la extensi贸n utilizando Path.GetExtension y remueve el punto.
         string ext = Path.GetExtension(partName);
-        if (!string.IsNullOrEmpty(ext))
-            return ext.TrimStart('.').ToLowerInvariant();
-        return string.Empty;
+        return string.IsNullOrEmpty(ext) ? string.Empty : ext.TrimStart('.').ToLowerInvariant();
     }
 }

@@ -5,7 +5,7 @@ using System.Xml.Linq;
 namespace DotnetPackaging.Msix.Core.ContentTypes;
 
 /// <summary>
-/// Serializador del modelo de Content Types a XML, generando un [Content_Types].xml conforme a la especificaciÃ³n.
+/// Serializador del modelo de Content Types a XML, generando un [Content_Types].xml conforme a la especificación.
 /// </summary>
 public static class ContentTypesSerializer
 {
@@ -13,7 +13,7 @@ public static class ContentTypesSerializer
     /// Serializa el ContentTypesModel a un string XML.
     /// </summary>
     /// <param name="model">Modelo de content types.</param>
-    /// <returns>XML en formato string con la declaraciÃ³n UTF-8.</returns>
+    /// <returns>XML en formato string con la declaración UTF-8.</returns>
     public static string Serialize(ContentTypesModel model)
     {
         XNamespace ns = "http://schemas.openxmlformats.org/package/2006/content-types";

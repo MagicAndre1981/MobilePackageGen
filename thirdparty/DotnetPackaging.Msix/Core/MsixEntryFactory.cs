@@ -8,14 +8,12 @@ public static class MsixEntryFactory
     {
         if (MakeAppxDeflate.USE_EXTERNAL_DEFLATE_VIA_MAKEAPPX)
         {
-            IByteSource compressedByteSource = ByteSource.FromByteObservable(MakeAppxDeflate.GetMakeAppxVersionOfDeflate(data));
-
             CompressionLevel compressionLevel = CompressionLevel.Optimal;
 
-            MsixEntry msixEntry = new MsixEntry
+            MsixEntry msixEntry = new()
             {
                 Original = data,
-                Compressed = compressedByteSource,
+                Compressed = ByteSource.FromByteObservable(MakeAppxDeflate.GetMakeAppxVersionOfDeflate(data)),
                 FullPath = entryName,
                 CompressionLevel = compressionLevel
             };
@@ -24,16 +22,14 @@ public static class MsixEntryFactory
         }
         else
         {
-            IByteSource compressedByteSource = ByteSource.FromByteObservable(data.Bytes.Compressed());
-
             CompressionLevel compressionLevel = CompressionLevel.Optimal;
 
-            MsixEntry msixEntry = new MsixEntry
+            MsixEntry msixEntry = new()
             {
                 Original = data,
-                Compressed = compressedByteSource,
+                Compressed = ByteSource.FromByteObservable(data.Bytes.Compressed()),
                 FullPath = entryName,
-                CompressionLevel = compressionLevel
+                CompressionLevel = compressionLevel,
             };
 
             return msixEntry;

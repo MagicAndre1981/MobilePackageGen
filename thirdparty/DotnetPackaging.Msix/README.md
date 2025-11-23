@@ -1,108 +1,206 @@
-# Distribute your aplications!
+# DotnetPackaging
 
-Wondering how to distribute your wonderful .NET application to your fellow peeps? Bored to pack your stuff in a .zip that you hate as much as your users? You are in the correct place!
-With it, you can create your .Deb and AppImage packages for Linux systems like Ubuntu, Debian and others. Woohoo!
+DotnetPackaging helps you turn the publish output of a .NET application into Linux-friendly deliverables. The repository produces two related artifacts:
 
-# Overview
+- **NuGet libraries** (`DotnetPackaging`, `DotnetPackaging.AppImage`, `DotnetPackaging.Deb`) that expose the packaging primitives for tool authors and CI integrations.
+- **A global `dotnet` tool** (`dotnetpackager`) that wraps those libraries with a scriptable command line experience.
 
-One of the most flagrant annoyances of the .NET world is the absence of standardized ways to distribute "classic" applications, those that are for end users. Imagine that you have a beautiful cross-platform application, like the ones created using [Avalonia UI](https://www.avaloniaui.net). Everything is fine until you need to distribute you apps. 
+Both flavors share the same code paths, so whatever works in the CLI is also available from your own automation.
 
-**DotnetPackaging** has been created to give an answer to those that want to distribute their applications in a more convenient way. It's about time, uh?
+## Repository layout
+- `src/DotnetPackaging`: core abstractions such as metadata models, ELF inspection, icon discovery and option builders.
+- `src/DotnetPackaging.AppImage`: AppImage-specific logic, including AppDir builders and runtime composition.
+- `src/DotnetPackaging.Deb`: helpers to produce Debian control/data archives and emit `.deb` files.
+- `src/DotnetPackaging.Tool`: the `dotnetpackager` CLI that consumes the libraries.
+- `src/DotnetPackaging.DeployerTool` and `src/DotnetPackaging.Deployment`: optional utilities for publishing packages from CI setups.
 
-# How can I use this?
+All projects target .NET 8.
 
-The application can be used as a library or as a .NET tool.
+## Library usage
 
-# Using it as a .NET Tool
+Every library works with the `Zafiro` filesystem abstractions so you can build packages from real directories or in-memory containers. The helpers infer reasonable defaults (architecture, executable, icon files, metadata) while still letting you override everything.
 
-Easy peasy. Install the tool by executing this command:
-
-```powershell
-dotnet tool install --global DotnetPackaging.Console
-```
-
-After the tool is installed, just invoke it with the appropriate arguments. 
-
-## Samples
-
-### AppImage
-
-This tool can create [AppImage](https://appimage.org) packages. Just invoke it this way:
+### AppImage packages
+Key capabilities:
+- Build an AppImage straight from a published directory: no temporary copies, the directory is streamed into the SquashFS runtime.
+- Generate intermediate AppDir structures if you want to tweak the contents before producing the final AppImage.
+- Automatically detect the main executable (ELF inspection) and common icon files, with opt-in overrides.
 
 ```csharp
-dotnetpackaging appimage ... <options>
-```
+using DotnetPackaging.AppImage;
+using DotnetPackaging.AppImage.Metadata;
+using Zafiro.DivineBytes;
+using Zafiro.FileSystem.Core;
+using Zafiro.FileSystem.Local;
 
-## From single directory
+var publishDir = new Directory(new FileSystem().DirectoryInfo.New("./bin/Release/net8.0/linux-x64/publish"));
+var appRoot = (await publishDir.ToDirectory()).Value;
+var container = new DirectoryContainer(appRoot);
 
-You can create them using a single build directory (using dotnet publish, for example). The tool will use the binaries and resources in that directory to create the AppImage. 
-
-## From AppImage
-
-You can create a directory structure according to the [AppDir specs](https://docs.appimage.org/reference/appdir.html) and use this tool to create the package from it. 
-
-### Deb files
-
-This is a sample to create a **deb** package.
-
-```powershell
-dotnetpackaging deb --directory c:\repos\myapp\bin\Release\net7.0\publish\linux-x64 --metadata C:\Users\JMN\Desktop\Testing\metadata.deb.json --output c:\users\jmn\desktop\testing\myapp.1.0.0.x64.deb
-```
-
-- Wait, wait! I understand the --directory and --output options, but what's the json file?
-
-it's a special file that you need to edit to customize the properties of your package.
-
-## Metadata.deb.json
-
-This is a sample file. Customize it to your needs.
-
-```json
+var metadata = new AppImageMetadata("com.example.myapp", "My App", "my-app")
 {
-    "Executables": {
-      "MyApp.Desktop": {
-        "CommandName": "myapp",
-        "DesktopEntry": {
-          "Icons": {
-            "32": "C:\\Users\\JMN\\Desktop\\Testing\\icon32.png",
-            "64": "C:\\Users\\JMN\\Desktop\\Testing\\icon64.png"
-          },
-          "Name": "Sample application",
-          "StartupWmClass": "Sample",
-          "Keywords": [
-            "Sample"
-          ],
-          "Comment": "This is a test",
-          "Categories": [
-            "Financial"
-          ]
-        }
-      }
-    },
-    "PackageMetadata": {
-      "Maintainer": "Some avid programmer",
-      "PackageName": "SamplePackage",
-      "ApplicationName": "Sample",
-      "Architecture": "amd64",
-      "Homepage": "https://www.sample.com",
-      "License": "MIT",
-      "Description": "Sample",
-      "Version": "1.0.0"
-    }
-  }
+    Version = "1.0.0",
+    Summary = "Cross-platform sample",
+    Comment = "Longer description shown in desktop menus",
+};
+
+var factory = new AppImageFactory();
+var appImage = await factory.Create(container.AsRoot(), metadata);
+if (appImage.IsSuccess)
+{
+    await appImage.Value.ToByteSource()
+        .Bind(bytes => bytes.WriteTo("./artifacts/MyApp.appimage"));
+}
 ```
 
-# Integrate it with Nuke Build system
+You can also call `factory.BuildAppDir(...)` to materialise an AppDir on disk, or `factory.CreateFromAppDir(...)` when you already have an AppDir layout.
 
-AS I mentioned above, DotnetPackaging isn't just a tool, but a library, too. You can integrate it with [Nuke](https://nuke.build) very easily!
+### Debian packages
+Key capabilities:
+- Build `.deb` archives from any container or directory that resembles the install root of your app.
+- Auto-detect the executable and architecture (with `FromDirectoryOptions` overrides when you know better).
+- Emit `IData` streams so you can persist packages to disk, upload them elsewhere, or plug them into other pipelines.
 
-Take a looks to this example:
+```csharp
+using System.IO.Abstractions;
+using DotnetPackaging.Deb;
+using DotnetPackaging;
+using Zafiro.DivineBytes;
+using Zafiro.DivineBytes.System.IO;
 
-1. https://github.com/SuperJMN/AvaloniaSyncer/blob/26260a6d2cc7c611d60e5c1e5b821f8512877ba5/build/Build.cs#L46
-2. https://github.com/SuperJMN/AvaloniaSyncer/blob/26260a6d2cc7c611d60e5c1e5b821f8512877ba5/build/DebPackages.cs#L16
+var publishDir = new DirectoryContainer(new FileSystem().DirectoryInfo.New("./bin/Release/net8.0/linux-x64/publish"));
+var debResult = await DebFile.From()
+    .Container(publishDir.AsRoot(), publishDir.Name)
+    .Configure(options =>
+    {
+        options.WithName("My App")
+               .WithPackage("my-app")
+               .WithVersion("1.0.0")
+               .WithSummary("Cross-platform sample app");
+    })
+    .Build();
 
-Feel free to ask in the Discussions section of this repo.
-If this has been useful for you, please consider sponsoring this project. Thanks!
+if (debResult.IsSuccess)
+{
+    await debResult.Value.ToData().DumpTo("./artifacts/MyApp_1.0.0_amd64.deb");
+}
+```
 
-# Acknowledgements
-- Huge thanks [Alexey Sonkin](https://github.com/teplofizik) for his wonderful SquashFS support in his [NyaFS](https://github.com/teplofizik/nyafs) library.
+`FromDirectoryOptions` exposes many more helpers (`WithExecutableName`, `WithIcon`, `WithHomepage`, `WithCategories`, `WithMaintainer`, etc.) so you can describe the package metadata you need.
+
+### Flatpak packages
+Key capabilities:
+- Generate a Flatpak layout (metadata + files/) without external tools.
+- Bundle to a single `.flatpak` using the system `flatpak` if available (fallback to an internal OSTree-based bundler).
+- Defaults-first: autodetect executable, architecture and icons; sane permissions and org.freedesktop runtime (24.08) by default.
+
+Library (defaults-first):
+```csharp
+using DotnetPackaging.Flatpak;
+using Zafiro.DivineBytes;
+using Zafiro.FileSystem.Local;
+
+var fs = new System.IO.Abstractions.FileSystem();
+var container = new DirectoryContainer(fs.DirectoryInfo.New("./bin/Release/net8.0/linux-x64/publish"));
+var packer = new FlatpakPacker();
+
+// Plan with sensible defaults (derives AppId, Name, icons, etc.)
+var plan = await packer.Plan(container.AsRoot());
+
+// Bundle: prefers system flatpak (build-export/build-bundle), falls back to internal bundler
+var bytes = await packer.Bundle(container.AsRoot());
+if (bytes.IsSuccess)
+{
+    await bytes.Value.WriteTo("./artifacts/MyApp.flatpak");
+}
+```
+
+## `dotnetpackager` CLI
+
+The CLI is published as `DotnetPackaging.Tool` and installs a `dotnetpackager` command that mirrors the library APIs.
+
+### Install
+```bash
+dotnet tool install --global DotnetPackaging.Tool
+```
+
+### Commands
+- `dotnetpackager deb` – build a Debian/Ubuntu `.deb` out of a publish directory.
+- `dotnetpackager appimage` – build an `.AppImage` file directly from a publish directory.
+- `dotnetpackager appimage appdir` – generate an AppDir folder structure for inspection/customisation.
+- `dotnetpackager appimage from-appdir` – package an existing AppDir into an AppImage.
+- `dotnetpackager flatpak layout` – create a Flatpak layout (metadata + files/) from a publish directory.
+- `dotnetpackager flatpak bundle` – create a `.flatpak` (uses system `flatpak` by default; `--system` to force system; internal fallback).
+- `dotnetpackager flatpak repo` – generate an OSTree repo directory (debug/validation).
+- `dotnetpackager flatpak pack` – minimal UX: only `--directory` and `--output-dir`; auto-named output and sensible defaults.
+
+Run `dotnetpackager <command> --help` to see the full list of shared options (`--application-name`, `--comment`, `--homepage`, `--keywords`, `--icon`, `--is-terminal`, etc.).
+
+### Examples
+Flatpak (minimal):
+```bash
+dotnetpackager flatpak pack \
+  --directory ./bin/Release/net8.0/linux-x64/publish \
+  --output-dir ./artifacts
+# Produces ./artifacts/<appId>_<version>_<arch>.flatpak
+```
+
+Flatpak (full control):
+```bash
+dotnetpackager flatpak bundle \
+  --directory ./bin/Release/net8.0/linux-x64/publish \
+  --output ./artifacts/MyApp.flatpak \
+  --system \
+  --application-name "My App" \
+  --summary "Cross-platform sample"
+```
+
+Build an AppImage in one go:
+```bash
+dotnetpackager appimage \
+  --directory ./bin/Release/net8.0/linux-x64/publish \
+  --output ./artifacts/MyApp.appimage \
+  --application-name "My App" \
+  --summary "Cross-platform sample" \
+  --homepage https://example.com
+```
+
+Stage an AppDir and inspect it before packaging:
+```bash
+dotnetpackager appimage appdir \
+  --directory ./bin/Release/net8.0/linux-x64/publish \
+  --output-dir ./artifacts/MyApp.AppDir
+
+# ...modify the AppDir contents if needed...
+
+dotnetpackager appimage from-appdir \
+  --directory ./artifacts/MyApp.AppDir \
+  --output ./artifacts/MyApp.appimage
+```
+
+Produce a Debian package with a custom name and version:
+```bash
+dotnetpackager deb \
+  --directory ./bin/Release/net8.0/linux-x64/publish \
+  --output ./artifacts/MyApp_1.0.0_amd64.deb \
+  --application-name "My App" \
+  --summary "Cross-platform sample" \
+  --comment "Longer description" \
+  --homepage https://example.com \
+  --license MIT \
+  --version 1.0.0
+```
+
+All commands work on Windows, macOS or Linux, but the produced artifacts target Linux desktops.
+
+## Working on the repository
+- Use the solution `DotnetPackaging.sln` and .NET SDK 8.0 or later.
+- Unit tests live under `test/` (AppImage, Deb, Msix, etc.).
+- `DotnetPackaging.DeployerTool` automates publishing NuGet packages and GitHub releases; see `azure-pipelines.yml` for a full CI example.
+
+## License
+The entire project is distributed under the MIT License. See `LICENSE` for details.
+
+## Acknowledgements
+- SquashFS support relies on [NyaFS](https://github.com/teplofizik/nyafs) by Alexey Sonkin.
+- Filesystem abstractions come from the [Zafiro](https://github.com/SuperJMN/Zafiro) toolkit.

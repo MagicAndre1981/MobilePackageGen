@@ -9,11 +9,11 @@ public static class Compressor
 {
     public static async Task<byte[]> Uncompress(byte[] compressedData)
     {
-        using (MemoryStream ms = new MemoryStream(compressedData))
+        using (MemoryStream ms = new(compressedData))
         {
-            await using (DeflateStream deflate = new DeflateStream(ms, CompressionMode.Decompress))
+            await using (DeflateStream deflate = new(ms, CompressionMode.Decompress))
             {
-                using (MemoryStream output = new MemoryStream())
+                using (MemoryStream output = new())
                 {
                     await deflate.CopyToAsync(output);
                     return output.ToArray();
@@ -21,20 +21,20 @@ public static class Compressor
             }
         }
     }
-    
+
     public static IObservable<byte[]> Compressed(this IObservable<byte[]> source, CompressionLevel compressionLevel = CompressionLevel.Optimal)
     {
         return Observable.Create<byte[]>(observer =>
         {
-            // Aumentar el tamaño del buffer para evitar bloqueos
-            PipeOptions pipeOptions = new PipeOptions(pauseWriterThreshold: 1024 * 1024); // 1MB
-            Pipe pipe = new Pipe(pipeOptions);
+            // Increase buffer size to avoid blocking
+            PipeOptions pipeOptions = new(pauseWriterThreshold: 1024 * 1024); // 1MB
+            Pipe pipe = new(pipeOptions);
 
-            // Primero configurar la suscripción de lectura para asegurar que se consumen los datos
+            // First configure the read subscription to ensure data is consumed
             IDisposable readSubscription = pipe.Reader.AsStream().ToObservable().Subscribe(observer);
 
-            // Crear el DeflateStream después de configurar la lectura
-            DeflateStream deflateStream = new DeflateStream(pipe.Writer.AsStream(), compressionLevel, leaveOpen: true);
+            // Create DeflateStream after configuring the read
+            DeflateStream deflateStream = new(pipe.Writer.AsStream(), compressionLevel, leaveOpen: true);
 
             // Suscribirse a la fuente
             IDisposable subscription = source.Subscribe(
@@ -42,7 +42,7 @@ public static class Compressor
                 {
                     try
                     {
-                        var array = block.ToArray();
+                        byte[] array = block.ToArray();
                         deflateStream.Write(array, 0, array.Length);
                         deflateStream.Flush(); // Hacer flush del DeflateStream
                         pipe.Writer.FlushAsync().GetAwaiter().GetResult(); // Hacer flush del PipeWriter
@@ -76,7 +76,7 @@ public static class Compressor
                 {
                     try
                     {
-                        deflateStream.Close(); 
+                        deflateStream.Close();
                         pipe.Writer.Complete();
                     }
                     catch (Exception ex)

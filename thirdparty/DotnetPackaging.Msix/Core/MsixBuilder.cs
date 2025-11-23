@@ -17,11 +17,11 @@ public class MsixBuilder : IAsyncDisposable
     private readonly List<long> localHeaderOffsets = [];
     private bool finished = false;
     private readonly string inputPath;
-    
+
     public MsixBuilder(Stream stream, Maybe<ILogger> logger, string inputPath)
     {
         this.inputPath = inputPath;
-        this.logger = logger.Map(l => l.ForContext<MsixBuilder>());
+        this.logger = logger.Map(l => l.ForContext("Module", "MSIX"));
         baseStream = stream ?? throw new ArgumentNullException(nameof(stream));
     }
 
@@ -43,7 +43,11 @@ public class MsixBuilder : IAsyncDisposable
 
         await WriteLocalFileHeader(entry);
         logger.Debug("Dumping data for {Entry}", entry);
-        await entry.Compressed.DumpTo(baseStream);
+        Result writeResult = await entry.Compressed.WriteTo(baseStream);
+        if (writeResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Error while writing entry {entry.FullPath}: {writeResult.Error}");
+        }
 
         if (!entry.FullPath.Equals("[Content_Types].xml") &&
             !entry.FullPath.Equals("AppxSignature.p7x") &&
@@ -58,7 +62,7 @@ public class MsixBuilder : IAsyncDisposable
 
     private async Task WriteLocalFileHeader(MsixEntry entry)
     {
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             // Signature
             writer.Write(0x04034b50);
@@ -120,10 +124,10 @@ public class MsixBuilder : IAsyncDisposable
             // Name
             byte[] nameBytes = Encoding.UTF8.GetBytes(entry.FullPath);
             writer.Write((short)nameBytes.Length);
-            
+
             // Extra field for Zip64
             writer.Write((short)0); // No extra field, but still using Zip64 features elsewhere
-            
+
             // File name
             writer.Write(nameBytes);
         }
@@ -131,7 +135,7 @@ public class MsixBuilder : IAsyncDisposable
 
     private async Task WriteDataDescriptor(MsixEntry entry)
     {
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             // Data Descriptor signature
             writer.Write(0x08074b50);
@@ -150,7 +154,7 @@ public class MsixBuilder : IAsyncDisposable
     private async Task WriteCentralDirectory()
     {
         long centralDirStart = baseStream.Position;
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             for (int i = 0; i < entries.Count; i++)
             {
@@ -162,7 +166,7 @@ public class MsixBuilder : IAsyncDisposable
                 writer.Write(0x02014b50);
                 writer.Write((short)45); // Version made by
 
-                 // Version needed to extract
+                // Version needed to extract
                 if (entry.FullPath.Equals("[Content_Types].xml") ||
                     entry.FullPath.Equals("AppxSignature.p7x") ||
                     entry.FullPath.Equals("AppxMetadata/CodeIntegrity.cat"))
@@ -216,7 +220,7 @@ public class MsixBuilder : IAsyncDisposable
 
     private void WriteZip64EndOfCentralDirectoryRecord(long centralDirStart, long centralDirSize, int entryCount)
     {
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             writer.Write(0x06064b50); // Zip64 EOCD Record signature
             writer.Write((ulong)44);  // Record size
@@ -233,7 +237,7 @@ public class MsixBuilder : IAsyncDisposable
 
     private void WriteZip64EndOfCentralDirectoryLocator(long zip64EOCDPos)
     {
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             writer.Write(0x07064b50); // Zip64 EOCD Locator signature
             writer.Write((uint)0);    // Disk with EOCD
@@ -244,7 +248,7 @@ public class MsixBuilder : IAsyncDisposable
 
     private void WriteEndOfCentralDirectory(long centralDirStart, long centralDirSize, int entryCount)
     {
-        using (BinaryWriter writer = new BinaryWriter(baseStream, Encoding.UTF8, leaveOpen: true))
+        using (BinaryWriter writer = new(baseStream, Encoding.UTF8, leaveOpen: true))
         {
             writer.Write(0x06054b50); // EOCD signature
 

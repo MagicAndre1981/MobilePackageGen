@@ -12,7 +12,7 @@ public class ObservableStream : Stream
     public override void Write(byte[] buffer, int offset, int count)
     {
         // Copiamos los bytes escritos y los enviamos directamente al observer.
-        var chunk = new byte[count];
+        byte[] chunk = new byte[count];
         Array.Copy(buffer, offset, chunk, 0, count);
         _observer.OnNext(chunk);
     }

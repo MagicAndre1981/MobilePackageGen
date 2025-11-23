@@ -13,14 +13,19 @@ namespace DotnetPackaging.Msix.Core
 
         public static IObservable<byte[]> GetMakeAppxVersionOfDeflate(IByteSource source)
         {
-            using MemoryStream MemoryStream = new MemoryStream();
-            source.DumpTo(MemoryStream).GetAwaiter().GetResult();
+            using MemoryStream MemoryStream = new();
+            source.WriteTo(MemoryStream).GetAwaiter().GetResult();
 
             return ByteSource.FromBytes(GetMakeAppxVersionOfDeflate(MemoryStream.ToArray()).GetAwaiter().GetResult());
         }
 
         public static async Task<byte[]?> GetMakeAppxVersionOfDeflate(byte[] inputBuffer)
         {
+            if (inputBuffer.Length == 0)
+            {
+                return [];
+            }
+
             if (System.IO.File.Exists(AppxOutput))
             {
                 await Task.Delay(1000);
